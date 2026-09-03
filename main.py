@@ -1,5 +1,9 @@
 from datetime import date
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from portfolio import load_portfolio
 from rates import get_all_rates
 from mailer import build_report, calculate_total, send_email

@@ -12,21 +12,39 @@ ASSET_LABELS = {
 }
 
 
-def build_report(portfolio, rates):
-    lines = []
+def calculate_total(portfolio, rates):
     total = 0.0
-
     for asset, amount in portfolio.items():
         price = rates.get(asset)
         if price is None:
             continue
+        total += amount * price
+    return total
+
+
+def build_report(portfolio, rates, previous_total=None):
+    lines = []
+
+    for asset, amount in portfolio.items():
+        if amount == 0:
+            continue
+        price = rates.get(asset)
+        if price is None:
+            continue
         value = amount * price
-        total += value
         label = ASSET_LABELS.get(asset, asset)
         lines.append(f"{label}: {amount} x {price:.2f} TL = {value:.2f} TL")
 
+    total = calculate_total(portfolio, rates)
+
     lines.append("")
-    lines.append(f"Toplam Portföy Değeri: {total:.2f} TL")
+    lines.append(f"Satarsan Eline Geçecek Toplam: {total:.2f} TL")
+
+    if previous_total is not None:
+        diff = total - previous_total
+        durum = "Kâr" if diff >= 0 else "Zarar"
+        lines.append(f"Dünden Bugüne {durum}: {diff:+.2f} TL")
+
     return "\n".join(lines)
 
 
@@ -38,11 +56,15 @@ def send_email(subject, body):
     if not sender or not password:
         raise RuntimeError("GMAIL_ADDRESS or GMAIL_APP_PASSWORD environment variable is not set")
 
+    print(f"sending from={sender} to={recipient} password_length={len(password)}")
+
     msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = subject
     msg["From"] = sender
     msg["To"] = recipient
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.set_debuglevel(1)
         server.login(sender, password)
         server.sendmail(sender, [recipient], msg.as_string())
+    print("send_email finished without raising")
