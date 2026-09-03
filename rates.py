@@ -2,8 +2,16 @@ import os
 import requests
 
 RAPIDAPI_HOST = "doviz-ve-altin-fiyatlari-try.p.rapidapi.com"
-CURRENCY_URL = f"https://{RAPIDAPI_HOST}/doviz"
-GOLD_URL = f"https://{RAPIDAPI_HOST}/altin"
+BASE_URL = f"https://{RAPIDAPI_HOST}/economy/currency/exchange-rate"
+
+ASSET_CODES = {
+    "USD": "USD",
+    "EUR": "EUR",
+    "GRAM_ALTIN": "gram-altin",
+    "CEYREK_ALTIN": "ceyrek-altin",
+    "YARIM_ALTIN": "yarim-altin",
+    "TAM_ALTIN": "tam-altin",
+}
 
 
 def _headers():
@@ -16,54 +24,32 @@ def _headers():
     }
 
 
-def _find_item(items, keywords):
-    for item in items:
-        name = str(item.get("name", "")).lower()
-        if all(k in name for k in keywords):
-            return item
-    return None
-
-
-def get_currency_rates():
-    response = requests.get(CURRENCY_URL, headers=_headers(), timeout=10)
+def _fetch(codes, extra_params=None):
+    params = {"code": ",".join(codes)}
+    if extra_params:
+        params.update(extra_params)
+    response = requests.get(BASE_URL, headers=_headers(), params=params, timeout=10)
     response.raise_for_status()
-    data = response.json().get("result", [])
-
-    usd = _find_item(data, ["dolar"])
-    eur = _find_item(data, ["euro"])
-
-    if usd is None or eur is None:
-        raise RuntimeError("could not locate USD or EUR in currency response")
-
-    return {
-        "USD": float(usd["selling"]),
-        "EUR": float(eur["selling"]),
-    }
+    payload = response.json()
+    if payload.get("status") != "success":
+        raise RuntimeError(f"API returned non-success status: {payload}")
+    return payload.get("data", [])
 
 
-def get_gold_prices():
-    response = requests.get(GOLD_URL, headers=_headers(), timeout=10)
-    response.raise_for_status()
-    data = response.json().get("result", [])
-
-    gram = _find_item(data, ["gram"])
-    ceyrek = _find_item(data, ["çeyrek"])
-    yarim = _find_item(data, ["yarım"])
-    tam = _find_item(data, ["tam"])
-
-    if not all([gram, ceyrek, yarim, tam]):
-        raise RuntimeError("could not locate all gold types in gold response")
-
-    return {
-        "GRAM_ALTIN": float(gram["selling"]),
-        "CEYREK_ALTIN": float(ceyrek["selling"]),
-        "YARIM_ALTIN": float(yarim["selling"]),
-        "TAM_ALTIN": float(tam["selling"]),
-    }
+def _index_by_code(items):
+    return {item["code"]: item for item in items}
 
 
 def get_all_rates():
-    rates = {}
-    rates.update(get_currency_rates())
-    rates.update(get_gold_prices())
-    return rates
+    codes = list(ASSET_CODES.values())
+    items = _fetch(codes)
+    by_code = _index_by_code(items)
+
+    if len(by_code) < len(codes):
+        missing = [c for c in codes if c not in by_code]
+        raise RuntimeError(f"missing codes in response: {missing}")
+
+    return {
+        asset: float(by_code[code]["selling"])
+        for asset, code in ASSET_CODES.items()
+    }
