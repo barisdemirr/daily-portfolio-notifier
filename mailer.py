@@ -23,8 +23,16 @@ def calculate_total(portfolio, rates):
 
 
 def build_report(portfolio, rates, previous_total=None):
-    lines = []
+    total = calculate_total(portfolio, rates)
 
+    summary_lines = [f"Satarsan Eline Geçecek Toplam: {total:.2f} TL"]
+
+    if previous_total is not None:
+        diff = total - previous_total
+        durum = "Kâr" if diff >= 0 else "Zarar"
+        summary_lines.append(f"Dünden Bugüne {durum}: {diff:+.2f} TL")
+
+    detail_lines = []
     for asset, amount in portfolio.items():
         if amount == 0:
             continue
@@ -33,18 +41,9 @@ def build_report(portfolio, rates, previous_total=None):
             continue
         value = amount * price
         label = ASSET_LABELS.get(asset, asset)
-        lines.append(f"{label}: {amount} x {price:.2f} TL = {value:.2f} TL")
+        detail_lines.append(f"{label}: {amount} x {price:.2f} TL = {value:.2f} TL")
 
-    total = calculate_total(portfolio, rates)
-
-    lines.append("")
-    lines.append(f"Satarsan Eline Geçecek Toplam: {total:.2f} TL")
-
-    if previous_total is not None:
-        diff = total - previous_total
-        durum = "Kâr" if diff >= 0 else "Zarar"
-        lines.append(f"Dünden Bugüne {durum}: {diff:+.2f} TL")
-
+    lines = summary_lines + [""] + detail_lines
     return "\n".join(lines)
 
 

@@ -16,12 +16,12 @@ def main():
 
     previous_total = load_previous_total()
     report = build_report(portfolio, rates, previous_total)
+    current_total = calculate_total(portfolio, rates)
 
-    subject = f"Portföy Raporu - {date.today().isoformat()}"
+    subject = f"Portföy Raporu - {current_total:.2f} TL - {date.today().isoformat()}"
     send_email(subject, report)
     print(report)
 
-    current_total = calculate_total(portfolio, rates)
     save_total(current_total)
 
 
