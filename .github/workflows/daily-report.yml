@@ -2,7 +2,7 @@ name: daily-report
 
 on:
   schedule:
-    - cron: "0 15 * * *"
+  - cron: "17 15 * * *"  # 18:17 TSİ
   workflow_dispatch:
 
 jobs:
